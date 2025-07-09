@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meeting Date Clarifier</title>
     <style>
+        /* ... (same CSS as before, omitted for brevity; use your existing CSS) ... */
+        /* You can keep the CSS from your previous code here */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -268,6 +270,7 @@
                         <input type="time" id="meetingTime" value="14:00" step="60" title="Use 24-hour format (e.g., 14:00 for 2:00 PM)">
                     </div>
                 </div>
+                <button class="btn btn-primary" id="saveMeetingBtn" style="margin-top:15px;">💾 Save Meeting</button>
             </div>
             <div class="live-swatch">
                 <h3>🌐 Current Internet Time</h3>
@@ -301,6 +304,7 @@
                 <div class="add-participant" id="addParticipantSection">
                     <input type="text" id="participantName" placeholder="Participant name">
                     <select id="participantTimezone">
+                        <!-- (Timezone options omitted for brevity, use your previous list here) -->
                         <optgroup label="🌎 Americas">
                             <option value="America/Anchorage">Alaska (AKST/AKDT)</option>
                             <option value="America/Los_Angeles">Pacific Time (PST/PDT)</option>
@@ -471,18 +475,44 @@
                 })}`;
             document.getElementById('currentSwatchTime').textContent = formatSwatchTime(beats);
         }
+
+        // Save Meeting Button logic
         document.addEventListener('DOMContentLoaded', function () {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            document.getElementById('meetingDate').value = tomorrow
-                .toISOString()
-                .split('T')[0];
+            // Load saved meeting data if available
+            const saved = localStorage.getItem('meetingData');
+            if (saved) {
+                const { title, date, time } = JSON.parse(saved);
+                if (title) document.getElementById('meetingTitle').value = title;
+                if (date) document.getElementById('meetingDate').value = date;
+                if (time) document.getElementById('meetingTime').value = time;
+            } else {
+                // If no saved meeting, set tomorrow as default
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                document.getElementById('meetingDate').value = tomorrow
+                    .toISOString()
+                    .split('T')[0];
+            }
+
             disableHostControls();
             updateLiveSwatchTime();
             setInterval(updateLiveSwatchTime, 864);
             updateMeeting();
             generateCalendar();
         });
+
+        document.getElementById('saveMeetingBtn').addEventListener('click', function() {
+            if (!isHostMode) {
+                alert('Only the host can save meeting details. Please enter the host password first.');
+                return;
+            }
+            const title = document.getElementById('meetingTitle').value;
+            const date = document.getElementById('meetingDate').value;
+            const time = document.getElementById('meetingTime').value;
+            localStorage.setItem('meetingData', JSON.stringify({ title, date, time }));
+            alert('Meeting details saved!');
+        });
+
         document.getElementById('meetingDate').addEventListener('change', updateMeeting);
         document.getElementById('meetingTime').addEventListener('change', updateMeeting);
         document.getElementById('meetingTitle').addEventListener('input', updateMeeting);
@@ -736,3 +766,4 @@
     </script>
 </body>
 </html>
+
