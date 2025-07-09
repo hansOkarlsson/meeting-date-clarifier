@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Date Clarifier</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #a8e6cf 0%, #ffd93d 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2d5016 0%, #4a7c59 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.2em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1em; }
+        .host-access {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .password-section { margin-bottom: 10px; }
+        .password-section input::placeholder { color: rgba(255,255,255,0.7); }
+        .password-section button:hover { background: rgba(255,255,255,0.3); }
+        .host-status { font-size: 0.9em; opacity: 0.9; }
+        .host-status.enabled { color: #27ae60; }
+        .host-status.error { color: #ff6b6b; }
+        .main-content { padding: 30px; }
+        .meeting-setup {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .meeting-setup.disabled {
+            background: #f1f3f4;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .meeting-setup.disabled input,
+        .meeting-setup.disabled select {
+            background: #e9ecef;
+            cursor: not-allowed;
+        }
+        .input-group { margin-bottom: 20px; }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2d5016;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #27ae60;
+        }
+        .datetime-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .primary-date {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .primary-date h2 { font-size: 1.8em; margin-bottom: 10px; }
+        .primary-date .date-time { font-size: 1.3em; opacity: 0.9; }
+        .swatch-time {
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .swatch-time .current { font-size: 1.1em; margin-bottom: 8px; }
+        .swatch-time .meeting { font-size: 1.4em; font-weight: bold; }
+        .live-swatch {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .live-swatch h3 { margin-bottom: 10px; font-size: 1.2em; }
+        .live-swatch .current-beat { font-size: 2.5em; font-weight: bold; margin-bottom: 5px; }
+        .live-swatch .bmt-time { font-size: 1em; opacity: 0.9; }
+        .swatch-info { margin-top: 15px; font-size: 0.9em; }
+        .info-toggle {
+            cursor: pointer;
+            opacity: 0.8;
+            text-decoration: underline;
+            margin-bottom: 10px;
+        }
+        .info-toggle:hover { opacity: 1; }
+        .info-content {
+            background: rgba(255,255,255,0.2);
+            padding: 12px;
+            border-radius: 8px;
+            line-height: 1.4;
+            text-align: left;
+        }
+        .info-content p { margin: 0; }
+        .participants-section.disabled {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .participants-section.disabled input,
+        .participants-section.disabled select,
+        .participants-section.disabled button {
+            background: #e9ecef;
+            cursor: not-allowed;
+        }
+        .conflict-alert {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+        .conflict-alert.show { display: block; animation: slideDown 0.3s ease; }
+        .same-day-indicator {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+        .same-day-indicator.show { display: block; animation: slideDown 0.3s ease; }
+        .participants-section { margin-bottom: 30px; }
+        .participants-section h3 { color: #2d5016; margin-bottom: 20px; font-size: 1.4em; }
+        .add-participant {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: end;
+        }
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: #27ae60; color: white; }
+        .btn-primary:hover { background: #229954; transform: translateY(-2px); }
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        .btn-danger:hover { background: #ff5252; }
+        .participant-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s;
+        }
+        .participant-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        .participant-info h4 { color: #2d5016; margin-bottom: 5px; }
+        .participant-info .local-date { font-size: 1.1em; font-weight: 600; }
+        .participant-info .countdown { font-size: 0.9em; color: #6c757d; margin-top: 5px; }
+        .date-different { border-color: #ff6b6b; background: #fff5f5; }
+        .date-same { border-color: #27ae60; background: #f8fff9; }
+        .calendar-widget {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .calendar-widget h3 { color: #2d5016; margin-bottom: 15px; }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .calendar-day {
+            padding: 8px;
+            text-align: center;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .calendar-header { font-weight: 600; color: #6c757d; }
+        .calendar-day.today { background: #27ae60; color: white; }
+        .calendar-day.meeting-day { background: #f39c12; color: white; font-weight: 600; }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 768px) {
+            .datetime-inputs, .add-participant { grid-template-columns: 1fr; }
+            .participant-card { grid-template-columns: 1fr; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🕐 Meeting Date Clarifier</h1>
+            <p>Clear date coordination across time zones</p>
+            <div class="host-access">
+                <div class="password-section">
+                    <input type="password" id="hostPassword" placeholder="Enter host password to edit meeting" style="padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; margin-right: 10px; width: 250px;">
+                    <button onclick="checkHostPassword()" style="padding: 10px 15px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer;">🔓 Unlock</button>
+                </div>
+                <div id="hostStatus" class="host-status">📖 View-only mode - Enter password to edit</div>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="meeting-setup" id="meetingSetup">
+                <div class="input-group">
+                    <label for="meetingTitle">Meeting Title</label>
+                    <input type="text" id="meetingTitle" placeholder="Weekly Team Sync" value="Weekly Team Sync">
+                </div>
+                <div class="datetime-inputs">
+                    <div class="input-group">
+                        <label for="meetingDate">Meeting Date (JST)</label>
+                        <input type="date" id="meetingDate">
+                    </div>
+                    <div class="input-group">
+                        <label for="meetingTime">Meeting Time (JST - 24hr format)</label>
+                        <input type="time" id="meetingTime" value="14:00" step="60" title="Use 24-hour format (e.g., 14:00 for 2:00 PM)">
+                    </div>
+                </div>
+            </div>
+            <div class="live-swatch">
+                <h3>🌐 Current Internet Time</h3>
+                <div class="current-beat" id="currentBeat">@000</div>
+                <div class="bmt-time" id="bmtTime">Loading...</div>
+                <div class="swatch-info">
+                    <div class="info-toggle" onclick="toggleSwatchInfo()">ℹ️ About Internet Time</div>
+                    <div class="info-content" id="swatchInfoContent" style="display: none;">
+                        <p>Internet Time divides each day into 1000 beats (@000-@999), eliminating time zones. Based in Switzerland (BMT - Biel Mean Time), it resets to @000 at midnight every 24 hours. The same beat applies worldwide!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="primary-date" id="primaryDate">
+                <h2 id="primaryTitle">Weekly Team Sync</h2>
+                <div class="date-time" id="primaryDateTime">
+                    Select a date and time
+                </div>
+                <div class="swatch-time" id="swatchTime" style="display: none;">
+                    <div class="current">Current time: <span id="currentSwatchTime">@000</span></div>
+                    <div class="meeting">Meeting time: <span id="meetingSwatchTime">@000</span></div>
+                </div>
+            </div>
+            <div class="conflict-alert" id="conflictAlert">
+                ⚠️ Date Conflict: Participants are on different calendar dates
+            </div>
+            <div class="same-day-indicator" id="sameDayIndicator">
+                ✅ All participants are on the same calendar date
+            </div>
+            <div class="participants-section" id="participantsSection">
+                <h3>👥 Participants</h3>
+                <div class="add-participant" id="addParticipantSection">
+                    <input type="text" id="participantName" placeholder="Participant name">
+                    <select id="participantTimezone">
+                        <optgroup label="🌎 Americas">
+                            <option value="America/Anchorage">Alaska (AKST/AKDT)</option>
+                            <option value="America/Los_Angeles">Pacific Time (PST/PDT)</option>
+                            <option value="America/Denver">Mountain Time (MST/MDT)</option>
+                            <option value="America/Chicago">Central Time (CST/CDT)</option>
+                            <option value="America/New_York">Eastern Time (EST/EDT)</option>
+                            <option value="America/Halifax">Atlantic Time (AST/ADT)</option>
+                            <option value="America/St_Johns">Newfoundland (NST/NDT)</option>
+                            <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                            <option value="America/Argentina/Buenos_Aires">Buenos Aires (ART)</option>
+                            <option value="America/Santiago">Santiago (CLT)</option>
+                            <option value="America/Bogota">Bogotá (COT)</option>
+                            <option value="America/Lima">Lima (PET)</option>
+                            <option value="America/Mexico_City">Mexico City (CST)</option>
+                            <option value="America/Toronto">Toronto (EST/EDT)</option>
+                            <option value="America/Vancouver">Vancouver (PST/PDT)</option>
+                        </optgroup>
+                        <optgroup label="🌍 Europe & Africa">
+                            <option value="Europe/London">London (GMT/BST)</option>
+                            <option value="Europe/Dublin">Dublin (GMT/IST)</option>
+                            <option value="Europe/Paris">Paris (CET/CEST)</option>
+                            <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                            <option value="Europe/Rome">Rome (CET/CEST)</option>
+                            <option value="Europe/Madrid">Madrid (CET/CEST)</option>
+                            <option value="Europe/Amsterdam">Amsterdam (CET/CEST)</option>
+                            <option value="Europe/Brussels">Brussels (CET/CEST)</option>
+                            <option value="Europe/Zurich">Zurich (CET/CEST)</option>
+                            <option value="Europe/Vienna">Vienna (CET/CEST)</option>
+                            <option value="Europe/Prague">Prague (CET/CEST)</option>
+                            <option value="Europe/Warsaw">Warsaw (CET/CEST)</option>
+                            <option value="Europe/Stockholm">Stockholm (CET/CEST)</option>
+                            <option value="Europe/Oslo">Oslo (CET/CEST)</option>
+                            <option value="Europe/Copenhagen">Copenhagen (CET/CEST)</option>
+                            <option value="Europe/Helsinki">Helsinki (EET/EEST)</option>
+                            <option value="Europe/Athens">Athens (EET/EEST)</option>
+                            <option value="Europe/Istanbul">Istanbul (TRT)</option>
+                            <option value="Europe/Moscow">Moscow (MSK)</option>
+                            <option value="Africa/Cairo">Cairo (EET)</option>
+                            <option value="Africa/Johannesburg">Johannesburg (SAST)</option>
+                            <option value="Africa/Lagos">Lagos (WAT)</option>
+                            <option value="Africa/Nairobi">Nairobi (EAT)</option>
+                            <option value="Africa/Casablanca">Casablanca (WET)</option>
+                        </optgroup>
+                        <optgroup label="🌏 Asia & Pacific">
+                            <option value="Asia/Tokyo" selected>Tokyo (JST)</option>
+                            <option value="Asia/Seoul">Seoul (KST)</option>
+                            <option value="Asia/Shanghai">Shanghai (CST)</option>
+                            <option value="Asia/Beijing">Beijing (CST)</option>
+                            <option value="Asia/Hong_Kong">Hong Kong (HKT)</option>
+                            <option value="Asia/Taipei">Taipei (CST)</option>
+                            <option value="Asia/Singapore">Singapore (SGT)</option>
+                            <option value="Asia/Kuala_Lumpur">Kuala Lumpur (MYT)</option>
+                            <option value="Asia/Jakarta">Jakarta (WIB)</option>
+                            <option value="Asia/Bangkok">Bangkok (ICT)</option>
+                            <option value="Asia/Ho_Chi_Minh">Ho Chi Minh City (ICT)</option>
+                            <option value="Asia/Manila">Manila (PST)</option>
+                            <option value="Asia/Kolkata">Mumbai/Delhi (IST)</option>
+                            <option value="Asia/Dhaka">Dhaka (BST)</option>
+                            <option value="Asia/Karachi">Karachi (PKT)</option>
+                            <option value="Asia/Dubai">Dubai (GST)</option>
+                            <option value="Asia/Tehran">Tehran (IRST)</option>
+                            <option value="Asia/Jerusalem">Jerusalem (IST)</option>
+                            <option value="Asia/Riyadh">Riyadh (AST)</option>
+                            <option value="Asia/Yekaterinburg">Yekaterinburg (YEKT)</option>
+                            <option value="Asia/Novosibirsk">Novosibirsk (NOVT)</option>
+                            <option value="Asia/Vladivostok">Vladivostok (VLAT)</option>
+                            <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                            <option value="Australia/Melbourne">Melbourne (AEST/AEDT)</option>
+                            <option value="Australia/Brisbane">Brisbane (AEST)</option>
+                            <option value="Australia/Perth">Perth (AWST)</option>
+                            <option value="Australia/Adelaide">Adelaide (ACST/ACDT)</option>
+                            <option value="Pacific/Auckland">Auckland (NZST/NZDT)</option>
+                            <option value="Pacific/Fiji">Fiji (FJT)</option>
+                            <option value="Pacific/Honolulu">Honolulu (HST)</option>
+                            <option value="Pacific/Guam">Guam (ChST)</option>
+                        </optgroup>
+                        <optgroup label="🏝️ Atlantic & Islands">
+                            <option value="Atlantic/Reykjavik">Reykjavik (GMT)</option>
+                            <option value="Atlantic/Azores">Azores (AZOT/AZOST)</option>
+                            <option value="Atlantic/Cape_Verde">Cape Verde (CVT)</option>
+                            <option value="Indian/Mauritius">Mauritius (MUT)</option>
+                            <option value="Indian/Maldives">Maldives (MVT)</option>
+                        </optgroup>
+                    </select>
+                    <button class="btn btn-primary" onclick="addParticipant()">Add</button>
+                </div>
+                <div id="participantsList">
+                    <!-- Participants will be added here -->
+                </div>
+            </div>
+            <div class="calendar-widget">
+                <h3>📅 Calendar View</h3>
+                <div id="calendarContainer">
+                    <!-- Calendar will be generated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let participants = [];
+        let meetingDateTime = null;
+        let isHostMode = false;
+        const HOST_PASSWORD = "mamamia"; // Simple password for demo
+
+        function checkHostPassword() {
+            const enteredPassword = document.getElementById('hostPassword').value;
+            const statusEl = document.getElementById('hostStatus');
+            if (enteredPassword === HOST_PASSWORD) {
+                isHostMode = true;
+                enableHostControls();
+                statusEl.textContent = "🔓 Host mode enabled - You can edit all settings";
+                statusEl.className = "host-status enabled";
+                document.getElementById('hostPassword').value = "";
+            } else {
+                isHostMode = false;
+                disableHostControls();
+                statusEl.textContent = "❌ Incorrect password - Try again";
+                statusEl.className = "host-status error";
+                setTimeout(() => {
+                    statusEl.textContent = "📖 View-only mode - Enter password to edit";
+                    statusEl.className = "host-status";
+                }, 3000);
+            }
+        }
+        function enableHostControls() {
+            document.getElementById('meetingSetup').classList.remove('disabled');
+            document.getElementById('participantsSection').classList.remove('disabled');
+        }
+        function disableHostControls() {
+            document.getElementById('meetingSetup').classList.add('disabled');
+            document.getElementById('participantsSection').classList.add('disabled');
+        }
+        function toggleSwatchInfo() {
+            const content = document.getElementById('swatchInfoContent');
+            const toggle = document.querySelector('.info-toggle');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '🔽 About Internet Time';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = 'ℹ️ About Internet Time';
+            }
+        }
+        function calculateSwatchTime(date = new Date()) {
+            const bmtTime = new Date(date.getTime() + (60 * 60 * 1000));
+            const hours = bmtTime.getUTCHours();
+            const minutes = bmtTime.getUTCMinutes();
+            const seconds = bmtTime.getUTCSeconds();
+            const secondsSinceMidnight = (hours * 3600) + (minutes * 60) + seconds;
+            const beats = (secondsSinceMidnight / 86.4);
+            return Math.floor(beats);
+        }
+        function formatSwatchTime(beats) {
+            return `@${beats.toString().padStart(3, '0')}`;
+        }
+        function updateLiveSwatchTime() {
+            const now = new Date();
+            const beats = calculateSwatchTime(now);
+            const bmtTime = new Date(now.getTime() + (60 * 60 * 1000));
+            document.getElementById('currentBeat').textContent = formatSwatchTime(beats);
+            document.getElementById('bmtTime').textContent =
+                `BMT: ${bmtTime.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false,
+                    timeZone: 'UTC'
+                })}`;
+            document.getElementById('currentSwatchTime').textContent = formatSwatchTime(beats);
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('meetingDate').value = tomorrow
+                .toISOString()
+                .split('T')[0];
+            disableHostControls();
+            updateLiveSwatchTime();
+            setInterval(updateLiveSwatchTime, 864);
+            updateMeeting();
+            generateCalendar();
+        });
+        document.getElementById('meetingDate').addEventListener('change', updateMeeting);
+        document.getElementById('meetingTime').addEventListener('change', updateMeeting);
+        document.getElementById('meetingTitle').addEventListener('input', updateMeeting);
+
+        function updateMeeting() {
+            const dateInput = document.getElementById('meetingDate').value;
+            const timeInput = document.getElementById('meetingTime').value;
+            const title = document.getElementById('meetingTitle').value;
+            if (!dateInput || !timeInput) {
+                document.getElementById('swatchTime').style.display = 'none';
+                document.getElementById('primaryDateTime').textContent = 'Select a date and time';
+                return;
+            }
+            meetingDateTime = new Date(`${dateInput}T${timeInput}:00+09:00`);
+            const bannerOpts = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'Asia/Tokyo'
+            };
+            document.getElementById('primaryTitle').textContent = title || 'Meeting';
+            document.getElementById('primaryDateTime').textContent =
+                `${meetingDateTime.toLocaleString('en-US', bannerOpts)} JST`;
+            const meetingBeats = calculateSwatchTime(meetingDateTime);
+            document.getElementById('meetingSwatchTime').textContent =
+                formatSwatchTime(meetingBeats);
+            document.getElementById('swatchTime').style.display = 'block';
+            updateParticipants();
+            generateCalendar();
+        }
+        function addParticipant() {
+            if (!isHostMode) {
+                alert('Only the host can add participants. Please enter the host password first.');
+                return;
+            }
+            const name = document.getElementById('participantName').value.trim();
+            const timezone = document.getElementById('participantTimezone').value;
+            if (!name) {
+                alert('Please enter a participant name');
+                return;
+            }
+            participants.push({ id: Date.now(), name, timezone });
+            document.getElementById('participantName').value = '';
+            updateParticipants();
+        }
+        function removeParticipant(id) {
+            if (!isHostMode) {
+                alert('Only the host can remove participants. Please enter the host password first.');
+                return;
+            }
+            participants = participants.filter(p => p.id !== id);
+            updateParticipants();
+        }
+        function updateParticipants() {
+            if (!meetingDateTime) return;
+            const container = document.getElementById('participantsList');
+            container.innerHTML = '';
+            if (participants.length === 0) {
+                container.innerHTML =
+                    '<p style="text-align:center;color:#6c757d;font-style:italic;">No participants added yet</p>';
+                document.getElementById('conflictAlert').classList.remove('show');
+                document.getElementById('sameDayIndicator').classList.remove('show');
+                return;
+            }
+            const jstDate = meetingDateTime.toLocaleDateString('en-US', { timeZone: 'Asia/Tokyo' });
+            const participantDates = new Set();
+            participants.forEach(p => {
+                const localDateStr = meetingDateTime.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    timeZone: p.timezone
+                });
+                const localTimeStr = meetingDateTime.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                    timeZone: p.timezone
+                });
+                const localDateOnly = meetingDateTime.toLocaleDateString('en-US', {
+                    timeZone: p.timezone
+                });
+                participantDates.add(localDateOnly);
+                const diffMs = meetingDateTime - new Date();
+                const days = Math.ceil(diffMs / 86_400_000);
+                const countdown =
+                    days === 0
+                        ? 'Today'
+                        : days === 1
+                        ? 'Tomorrow'
+                        : days === -1
+                        ? 'Yesterday'
+                        : days > 1
+                        ? `In ${days} days`
+                        : `${Math.abs(days)} days ago`;
+                const diffClass = localDateOnly !== jstDate ? 'date-different' : 'date-same';
+                const beats = calculateSwatchTime(meetingDateTime);
+                const card = document.createElement('div');
+                card.className = `participant-card ${diffClass}`;
+                card.innerHTML = `
+                    <div class="participant-info">
+                        <h4>${p.name}</h4>
+                        <div class="local-date">${localDateStr}, ${localTimeStr}</div>
+                        <div style="font-size:.9em;color:#27ae60;margin-top:3px;">🌐 ${formatSwatchTime(beats)} beats</div>
+                        <div class="countdown">${countdown}</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:12px;color:#6c757d;">${getTimezoneAbbr(p.timezone)}</div>
+                        ${
+                            diffClass === 'date-different'
+                                ? '<div style="color:#ff6b6b;font-size:12px;">📅 Different date</div>'
+                                : '<div style="color:#27ae60;font-size:12px;">✅ Same date</div>'
+                        }
+                    </div>
+                    ${
+                        isHostMode
+                            ? `<button class="btn btn-danger" onclick="removeParticipant(${p.id})">Remove</button>`
+                            : '<div style="font-size:12px;color:#6c757d;text-align:center;">Host only</div>'
+                    }
+                `;
+                container.appendChild(card);
+            });
+            if (participantDates.size > 1) {
+                document.getElementById('conflictAlert').classList.add('show');
+                document.getElementById('sameDayIndicator').classList.remove('show');
+            } else {
+                document.getElementById('conflictAlert').classList.remove('show');
+                document.getElementById('sameDayIndicator').classList.add('show');
+            }
+        }
+        function getTimezoneAbbr(timezone) {
+            const abbrs = {
+                'America/Anchorage': 'AKST/AKDT',
+                'America/Los_Angeles': 'PST/PDT',
+                'America/Denver': 'MST/MDT',
+                'America/Chicago': 'CST/CDT',
+                'America/New_York': 'EST/EDT',
+                'America/Halifax': 'AST/ADT',
+                'America/St_Johns': 'NST/NDT',
+                'America/Sao_Paulo': 'BRT',
+                'America/Argentina/Buenos_Aires': 'ART',
+                'America/Santiago': 'CLT',
+                'America/Bogota': 'COT',
+                'America/Lima': 'PET',
+                'America/Mexico_City': 'CST',
+                'America/Toronto': 'EST/EDT',
+                'America/Vancouver': 'PST/PDT',
+                'Europe/London': 'GMT/BST',
+                'Europe/Dublin': 'GMT/IST',
+                'Europe/Paris': 'CET/CEST',
+                'Europe/Berlin': 'CET/CEST',
+                'Europe/Rome': 'CET/CEST',
+                'Europe/Madrid': 'CET/CEST',
+                'Europe/Amsterdam': 'CET/CEST',
+                'Europe/Brussels': 'CET/CEST',
+                'Europe/Zurich': 'CET/CEST',
+                'Europe/Vienna': 'CET/CEST',
+                'Europe/Prague': 'CET/CEST',
+                'Europe/Warsaw': 'CET/CEST',
+                'Europe/Stockholm': 'CET/CEST',
+                'Europe/Oslo': 'CET/CEST',
+                'Europe/Copenhagen': 'CET/CEST',
+                'Europe/Helsinki': 'EET/EEST',
+                'Europe/Athens': 'EET/EEST',
+                'Europe/Istanbul': 'TRT',
+                'Europe/Moscow': 'MSK',
+                'Africa/Cairo': 'EET',
+                'Africa/Johannesburg': 'SAST',
+                'Africa/Lagos': 'WAT',
+                'Africa/Nairobi': 'EAT',
+                'Africa/Casablanca': 'WET',
+                'Asia/Tokyo': 'JST',
+                'Asia/Seoul': 'KST',
+                'Asia/Shanghai': 'CST',
+                'Asia/Beijing': 'CST',
+                'Asia/Hong_Kong': 'HKT',
+                'Asia/Taipei': 'CST',
+                'Asia/Singapore': 'SGT',
+                'Asia/Kuala_Lumpur': 'MYT',
+                'Asia/Jakarta': 'WIB',
+                'Asia/Bangkok': 'ICT',
+                'Asia/Ho_Chi_Minh': 'ICT',
+                'Asia/Manila': 'PST',
+                'Asia/Kolkata': 'IST',
+                'Asia/Dhaka': 'BST',
+                'Asia/Karachi': 'PKT',
+                'Asia/Dubai': 'GST',
+                'Asia/Tehran': 'IRST',
+                'Asia/Jerusalem': 'IST',
+                'Asia/Riyadh': 'AST',
+                'Asia/Yekaterinburg': 'YEKT',
+                'Asia/Novosibirsk': 'NOVT',
+                'Asia/Vladivostok': 'VLAT',
+                'Australia/Sydney': 'AEST/AEDT',
+                'Australia/Melbourne': 'AEST/AEDT',
+                'Australia/Brisbane': 'AEST',
+                'Australia/Perth': 'AWST',
+                'Australia/Adelaide': 'ACST/ACDT',
+                'Pacific/Auckland': 'NZST/NZDT',
+                'Pacific/Fiji': 'FJT',
+                'Pacific/Honolulu': 'HST',
+                'Pacific/Guam': 'ChST',
+                'Atlantic/Reykjavik': 'GMT',
+                'Atlantic/Azores': 'AZOT/AZOST',
+                'Atlantic/Cape_Verde': 'CVT',
+                'Indian/Mauritius': 'MUT',
+                'Indian/Maldives': 'MVT'
+            };
+            return abbrs[timezone] || timezone;
+        }
+        function generateCalendar() {
+            const container = document.getElementById('calendarContainer');
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const lastDay = new Date(currentYear, currentMonth + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            let html = `<h4>${monthNames[currentMonth]} ${currentYear}</h4>`;
+            html += '<div class="calendar-grid">';
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            dayNames.forEach(day => {
+                html += `<div class="calendar-day calendar-header">${day}</div>`;
+            });
+            const current = new Date(startDate);
+            for (let i = 0; i < 42; i++) {
+                const isToday = current.toDateString() === now.toDateString();
+                const isMeetingDay = meetingDateTime && current.toDateString() === meetingDateTime.toDateString();
+                let classes = 'calendar-day';
+                if (isToday) classes += ' today';
+                if (isMeetingDay) classes += ' meeting-day';
+                html += `<div class="${classes}">${current.getDate()}</div>`;
+                current.setDate(current.getDate() + 1);
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        document.getElementById('participantName').addEventListener('keypress', e => {
+            if (e.key === 'Enter') addParticipant();
+        });
+        document.getElementById('hostPassword').addEventListener('keypress', e => {
+            if (e.key === 'Enter') checkHostPassword();
+        });
+    </script>
+</body>
+</html>
